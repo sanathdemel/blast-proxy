@@ -1,0 +1,6 @@
+
+# never commit reviewer access files
+reviewer.kubeconfig
+reviewer.token
+*.kubeconfig
+*.token
