@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blast-proxy-nginx
+  namespace: obol
+  labels:
+    app.kubernetes.io/name: blast-proxy
+    app.kubernetes.io/part-of: obol-demo
+data:
+  # Rendered by the nginx entrypoint: /etc/nginx/templates/*.template ➜ /etc/nginx/conf.d/*.conf
+  default.conf.template: |
+    server {
+      listen 8080;
+      resolver 1.1.1.1 8.8.8.8 ipv6=off valid=30s;
+
+      # Upstream + project prefix injected from Secret via env
+      set $upstream https://eth-holesky-beacon.blastapi.io;
+      set $prefix   /${BLAST_PROJECT_ID};  # no trailing slash
+
+      # Long-lived (SSE) + sane proxy defaults
+      proxy_buffering off;
+      proxy_read_timeout 3600s;
+      proxy_send_timeout 3600s;
+      proxy_http_version 1.1;
+      proxy_set_header Connection "";
+
+      location / {
+        proxy_set_header Host eth-holesky-beacon.blastapi.io;
+        proxy_set_header x-api-key ${BLAST_API_KEY};
+        proxy_ssl_server_name on;
+        proxy_ssl_name eth-holesky-beacon.blastapi.io;
+        proxy_pass $upstream$prefix$request_uri;
+      }
+
+      # Local health for k8s probes
+      location = /healthz { return 200 "ok\n"; }
+    }
+

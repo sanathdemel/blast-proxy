@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: blast-proxy-netcheck
+  namespace: obol
+  labels:
+    app.kubernetes.io/name: blast-proxy
+    app.kubernetes.io/component: tests
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: curl
+          image: curlimages/curl:8.10.1
+          args:
+            - sh
+            - -lc
+            - |
+              set -euo pipefail
+              base="http://blast-proxy.obol.svc.cluster.local:8080"
+              echo "GET $base/eth/v1/node/version"
+              curl -sfm 10 "$base/eth/v1/node/version" >/dev/null
+              echo "GET $base/eth/v1/node/syncing"
+              curl -sfm 10 "$base/eth/v1/node/syncing" >/dev/null
+              echo "GET $base/eth/v1/beacon/headers/head"
+              curl -sfm 10 "$base/eth/v1/beacon/headers/head" >/dev/null
+              echo "OK"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: blast-proxy-ssecheck
+  namespace: obol
+  labels:
+    app.kubernetes.io/name: blast-proxy
+    app.kubernetes.io/component: tests
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: curl
+          image: curlimages/curl:8.10.1
+          args:
+            - sh
+            - -lc
+            - |
+              set -euo pipefail
+              base="http://blast-proxy.obol.svc.cluster.local:8080"
+              echo "SSE $base/eth/v1/events?topics=head"
+              # read a few lines then exit
+              curl -sfm 25 -N -H "Accept: text/event-stream" "$base/eth/v1/events?topics=head" | head -n 4 >/dev/null
+              echo "OK"
+
